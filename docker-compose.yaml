@@ -44,8 +44,8 @@ services:
     ports:
       - '172.17.0.1:60101:9000'
     volumes:
-      - '/var/lib/srv/$USER/docker/invoiceninja/invoiceninja/latest/rootfs/data/invoiceninja/storage:/var/app/storage'
-      - '/var/lib/srv/$USER/docker/invoiceninja/invoiceninja/latest/rootfs/data/invoiceninja/public:/var/app/public'
+      - '/var/lib/srv/$USER/docker/invoiceninja/rootfs/data/invoiceninja/public:/var/app/public'
+      - '/var/lib/srv/$USER/docker/invoiceninja/rootfs/data/invoiceninja/storage:/var/app/storage'
     depends_on:
       db:
         condition: 'service_healthy'
@@ -53,7 +53,6 @@ services:
         condition: 'service_healthy'
     networks:
       - invoiceninja
-
 
   db:
     image: mysql:8
@@ -67,9 +66,9 @@ services:
       - MYSQL_PASSWORD=g9VmerMjwmwEmusbYuE23Fg7p28WyN24
       - MYSQL_ROOT_PASSWORD=g9VmerMjwmwEmusbYuE23Fg7p28WyN24
     volumes:
-      - '/var/lib/srv/$USER/docker/db/mysql/invoiceninja:/var/lib/mysql'
+      - '/var/lib/srv/$USER/databases/mysql/invoiceninja:/var/lib/mysql'
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-u', 'root' ]
+      test: ['CMD', 'mysqladmin', 'ping', '-u', 'root']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,7 +81,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     volumes:
-      - /var/lib/srv/$USER/docker/db/redis/invoiceninja:/data
+      - '/var/lib/srv/$USER/databases/redis/invoiceninja:/data'
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
       interval: 10s
