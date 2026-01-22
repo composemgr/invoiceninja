@@ -67,7 +67,7 @@ services:
       MYSQL_PASSWORD: ${DB_USER_PASS:-g9VmerMjwmwEmusbYuE23Fg7p28WyN24}
       MYSQL_ROOT_PASSWORD: ${DB_ADMIN_PASS:-g9VmerMjwmwEmusbYuE23Fg7p28WyN24}
     volumes:
-      - './rootfs/db/mysql/invoiceninja:/var/lib/mysql'
+      - './rootfs/data/db/mysql/invoiceninja:/var/lib/mysql'
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-u', 'root']
       interval: 10s
@@ -87,7 +87,7 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
     volumes:
-      - './rootfs/db/redis/invoiceninja:/data'
+      - './rootfs/data/db/redis/invoiceninja:/data'
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
       interval: 10s
