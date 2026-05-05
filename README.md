@@ -41,8 +41,8 @@ BASE_DOMAIN_NAME=
 
 ## 📂 Volumes
 
-- `./rootfs/config/invoiceninja` - Configuration files
-- `./rootfs/data/invoiceninja` - Application data
+- `./volumes/config/invoiceninja` - Configuration files
+- `./volumes/data/invoiceninja` - Application data
 
 ## 🔐 Security
 
