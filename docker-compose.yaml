@@ -44,8 +44,8 @@ services:
     ports:
       - '172.17.0.1:60101:9000'
     volumes:
-      - './rootfs/data/invoiceninja:/var/app/public'
-      - './rootfs/data/invoiceninja/storage:/var/app/storage'
+      - './volumes/data/invoiceninja:/var/app/public'
+      - './volumes/data/invoiceninja/storage:/var/app/storage'
     depends_on:
       db:
         condition: 'service_healthy'
@@ -67,7 +67,7 @@ services:
       MYSQL_PASSWORD: ${DB_USER_PASS:-g9VmerMjwmwEmusbYuE23Fg7p28WyN24}
       MYSQL_ROOT_PASSWORD: ${DB_ADMIN_PASS:-g9VmerMjwmwEmusbYuE23Fg7p28WyN24}
     volumes:
-      - './rootfs/data/db/mysql/invoiceninja:/var/lib/mysql'
+      - './volumes/data/db/mysql/invoiceninja:/var/lib/mysql'
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-u', 'root']
       interval: 10s
@@ -87,7 +87,7 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
     volumes:
-      - './rootfs/data/db/redis/invoiceninja:/data'
+      - './volumes/data/db/redis/invoiceninja:/data'
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
       interval: 10s
