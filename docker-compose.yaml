@@ -35,12 +35,14 @@ services:
       MAIL_MAILER: log
       MAIL_HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
       MAIL_PORT: ${EMAIL_SERVER_PORT:-587}
-      MAIL_USERNAME: ${EMAIL_SERVER_USER:-}
-      MAIL_PASSWORD: ${EMAIL_SERVER_PASS:-}
+      MAIL_USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      MAIL_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
       MAIL_ENCRYPTION: ${EMAIL_SERVER_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${EMAIL_SERVER_MAIL_FROM:-no-reply@example.com}
       MAIL_FROM_NAME: ${EMAIL_SERVER_FROM_ORG:-InvoiceNinja}
       PDF_GENERATOR: snappdf
+      CONTAINER_NAME: invoiceninja-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     ports:
       - '172.17.0.1:60101:9000'
     volumes:
@@ -53,6 +55,24 @@ services:
         condition: service_healthy
     networks:
       - invoiceninja
+      - proxy
+      - cloudflare
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://invoiceninja-app:9000'
+      - 'cloudflare.hostname=invoiceninja.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.invoiceninja-app.entrypoints=http'
+      - 'traefik.http.routers.invoiceninja-app-secure.tls=true'
+      - 'traefik.http.routers.invoiceninja-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.invoiceninja-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.invoiceninja-app.middlewares=invoiceninja-app-https-redirect'
+      - 'traefik.http.routers.invoiceninja-app-secure.entrypoints=https'
+      - 'traefik.http.routers.invoiceninja-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.invoiceninja-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.invoiceninja-app-secure.service=invoiceninja-app'
+      - 'traefik.http.services.invoiceninja-app.loadbalancer.server.port=9000'
 
   db:
     image: mariadb:latest
@@ -66,6 +86,7 @@ services:
       MYSQL_DATABASE: ${DB_CREATE_DATABASE_NAME:-ninja}
       MYSQL_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       MYSQL_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      CONTAINER_NAME: invoiceninja-db
     volumes:
       - './volumes/data/db/mysql/invoiceninja:/var/lib/mysql'
     healthcheck:
@@ -86,6 +107,7 @@ services:
     logging: *default-logging
     environment:
       TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: invoiceninja-redis
     volumes:
       - './volumes/data/db/redis/invoiceninja:/data'
     healthcheck:
@@ -101,3 +123,7 @@ networks:
   invoiceninja:
     name: invoiceninja
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
