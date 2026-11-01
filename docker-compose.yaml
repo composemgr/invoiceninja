@@ -1,5 +1,4 @@
-# nginx proxy address - http://172.17.0.1:60101
-
+# nginx proxy address - http://172.17.0.1:64210
 name: invoiceninja
 x-logging: &default-logging
   options:
@@ -12,11 +11,12 @@ services:
     image: invoiceninja/invoiceninja:latest
     container_name: invoiceninja-app
     domainname: ${BASE_DOMAIN_NAME:-example.com}
-    hostname: ${BASE_HOST_NAME:-localhost}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
     restart: always
     pull_policy: always
     logging: *default-logging
     environment:
+      TZ: ${TZ:-America/New_York}
       IS_DOCKER: 'true'
       TRUSTED_PROXIES: '*'
       REQUIRE_HTTPS: 'false'
@@ -26,9 +26,10 @@ services:
       DB_DATABASE: ${DB_CREATE_DATABASE_NAME:-ninja}
       DB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       DB_HOST: invoiceninja-db
+      DB_PORT: 3306
       DB_STRICT: 'false'
       DB_TYPE: mysql
-      APP_URL: http://${BASE_HOST_NAME:-localhost}
+      APP_URL: http://${BASE_HOST_NAME:-$HOSTNAME}
       APP_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       IN_USER_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
       IN_PASSWORD: ${APP_ADMIN_PASS:-changeme_admin_password}
@@ -37,46 +38,29 @@ services:
       MAIL_PORT: ${EMAIL_SERVER_PORT:-587}
       MAIL_USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
       MAIL_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
-      MAIL_ENCRYPTION: ${EMAIL_SERVER_ENCRYPTION:-tls}
+      MAIL_ENCRYPTION: ${EMAIL_SERVER_USE_TLS:-true}
       MAIL_FROM_ADDRESS: ${EMAIL_SERVER_MAIL_FROM:-no-reply@example.com}
       MAIL_FROM_NAME: ${EMAIL_SERVER_FROM_ORG:-InvoiceNinja}
       PDF_GENERATOR: snappdf
       CONTAINER_NAME: invoiceninja-app
       HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
-    ports:
-      - '172.17.0.1:60101:9000'
     volumes:
-      - './volumes/data/invoiceninja:/var/app/public'
-      - './volumes/data/invoiceninja/storage:/var/app/storage'
+      - './volumes/data/invoiceninja:/var/app/public:z'
+      - './volumes/data/invoiceninja/storage:/var/app/storage:z'
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - '172.17.0.1:64210:9000'
     networks:
       - invoiceninja
-      - proxy
-      - cloudflare
-    labels:
-      - 'traefik.enable=true'
-      - 'cloudflare.enable=true'
-      - 'traefik.docker.network=proxy'
-      - 'cloudflare.service=http://invoiceninja-app:9000'
-      - 'cloudflare.hostname=invoiceninja.${CLOUDFLARE_ZONE_NAME:-}'
-      - 'traefik.http.routers.invoiceninja-app.entrypoints=http'
-      - 'traefik.http.routers.invoiceninja-app-secure.tls=true'
-      - 'traefik.http.routers.invoiceninja-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.middlewares.invoiceninja-app-https-redirect.redirectscheme.scheme=https'
-      - 'traefik.http.routers.invoiceninja-app.middlewares=invoiceninja-app-https-redirect'
-      - 'traefik.http.routers.invoiceninja-app-secure.entrypoints=https'
-      - 'traefik.http.routers.invoiceninja-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
-      - 'traefik.http.routers.invoiceninja-app-secure.tls.certresolver=cloudflare'
-      - 'traefik.http.routers.invoiceninja-app-secure.service=invoiceninja-app'
-      - 'traefik.http.services.invoiceninja-app.loadbalancer.server.port=9000'
-
   db:
     image: mariadb:latest
     container_name: invoiceninja-db
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: invoiceninja-db
     restart: always
     pull_policy: always
     logging: *default-logging
@@ -88,19 +72,20 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
       CONTAINER_NAME: invoiceninja-db
     volumes:
-      - './volumes/data/db/mysql/invoiceninja:/var/lib/mysql'
+      - './volumes/db/mariadb/invoiceninja:/var/lib/mysql:z'
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-u', 'root']
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     networks:
       - invoiceninja
 
   redis:
     image: redis:alpine
     container_name: invoiceninja-redis
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
     hostname: invoiceninja-redis
     restart: always
     pull_policy: always
@@ -108,14 +93,11 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
       CONTAINER_NAME: invoiceninja-redis
-    volumes:
-      - './volumes/data/db/redis/invoiceninja:/data'
     healthcheck:
-      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
     networks:
       - invoiceninja
 
@@ -123,7 +105,3 @@ networks:
   invoiceninja:
     name: invoiceninja
     external: false
-  proxy:
-    external: true
-  cloudflare:
-    external: true
